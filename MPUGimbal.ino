@@ -26,7 +26,9 @@ float basePosition = 0.0f;
 float pitchPosition = 0.0f;
 float rollPosition = 0.0f;
 
-float calculationAccuracy = 100.0f;
+int calculationAccuracy = 100;
+int stepTime = 500;//microseconds
+int timeIncrement = stepTime / calculationAccuracy;
 
 byte mpuSelection = 0;
 
@@ -91,7 +93,9 @@ void loop() {
     Serial.println();
     */
     
-    transitionGimbal(90, 90, 180);
+    transitionGimbal( 0,   0,  0);
+    delay(5000);
+    transitionGimbal( 90,  90, 180);
     delay(5000);
     transitionGimbal(-90, -90, 0);
     delay(5000);
@@ -111,9 +115,11 @@ void readOutAccelGyro(){
 }
 
 void transitionGimbal(float y, float p, float r){
+
+  Serial.println("transition");
   y = (800.0f / 90.0f) * y;//0.1125 degrees
   p = (800.0f / 90.0f) * p;
-  //r = r
+  r = (800.0f / 90.0f) * r;//scale servo output to stepper range moving at 0.1125 degree increments
 
   //Set stepper motor directions for transition
   if      (y > basePosition)  digitalWrite(BASEDIR,  HIGH);
@@ -133,19 +139,32 @@ void transitionGimbal(float y, float p, float r){
   //for(float yI = 0; yI < abs(basePosition - y); yI++)
 
   //Prevents division by zero by requiring a minimum movement
-  if(baseDistance < 1)  baseDistance = 0.1125f;
+  if(baseDistance  < 1) baseDistance  = 0.1125f;
   if(pitchDistance < 1) pitchDistance = 0.1125f;
-  if(rollDistance < 1)  rollDistance = 0.1125f;
+  if(rollDistance  < 1) rollDistance  = 0.1125f;
   
   //amount of steps skipped before stepper is moved
-  const int baseIncrements  = (int)((maxValue / baseDistance)  * calculationAccuracy);//100 / 100 * 100 = 100
-  const int pitchIncrements = (int)((maxValue / pitchDistance) * calculationAccuracy);//100 / 80  * 100 = 125
-  const int rollIncrements  = (int)((maxValue / rollDistance)  * calculationAccuracy);//100 / 60  * 100 = 167
+  const int baseIncrements  = (int)((maxValue / baseDistance)  * calculationAccuracy);//100 / 100 * 100 = 100; 1600 / 1600 * 100 = 100
+  const int pitchIncrements = (int)((maxValue / pitchDistance) * calculationAccuracy);//100 / 80  * 100 = 125; 1600 / 800  * 100 = 200
+  const int rollIncrements  = (int)((maxValue / rollDistance)  * calculationAccuracy);//100 / 60  * 100 = 167; 1600 / 400  * 100 = 400
 
   //incrementer for triggering step
-  int bI = baseIncrements;
-  int pI = pitchIncrements;
+  int bI = baseDistance;
+  int pI = pitchDistance;
   int rI = rollIncrements;
+
+  int bIO = 0;//stepper off time incrementer
+  int pIO = 0;
+  
+  Serial.print("DISTANCE: ");  Serial.print(",");
+  Serial.print(baseDistance);  Serial.print(",");
+  Serial.print(pitchDistance); Serial.print(",");
+  Serial.print(rollDistance);  Serial.println();
+
+  Serial.print("INCREMENTS: ");  Serial.print(",");
+  Serial.print(baseIncrements);  Serial.print(",");
+  Serial.print(pitchIncrements); Serial.print(",");
+  Serial.print(rollIncrements);  Serial.println();
 
   //used to know when to turn a step signal off
   bool bStepped = false;
@@ -155,22 +174,44 @@ void transitionGimbal(float y, float p, float r){
   for(int i = 0; i < maxValue * calculationAccuracy; i++){
     if(bI < baseIncrements){
       bI++;
-      if (bStepped) digitalWrite(BASESTP,  LOW);
     }
     else{
       bI = 0;
       digitalWrite(BASESTP, HIGH);
       bStepped = true;
+      Serial.println("BStep");
+    }
+      
+    if(bStepped && bIO < (stepTime / timeIncrement)){
+      bIO++;
+    }
+    else{
+      bIO = 0;
+      digitalWrite(BASESTP,  LOW);
+      bStepped = false;
     }
     
     if(pI < pitchIncrements){
       pI++;
-      if (pStepped) digitalWrite(PITCHSTP,  LOW);
+      if (pStepped) {
+        digitalWrite(PITCHSTP,  LOW);
+        pStepped = false;
+      }
     }
     else{
       pI = 0;
       digitalWrite(PITCHSTP, HIGH);
       pStepped = true;
+      Serial.println("PSTEP");
+    }
+    
+    if(pStepped && pIO < (stepTime / timeIncrement)){
+      pIO++;
+    }
+    else{
+      pIO = 0;
+      digitalWrite(BASESTP,  LOW);
+      pStepped = false;
     }
     
     if(rI < rollIncrements){
@@ -179,10 +220,16 @@ void transitionGimbal(float y, float p, float r){
     else{
       rI = 0;
       roll.write(rollPosition + (rMod * 0.1125f));//move servo same increment as stepper at 1/16th mstepping
+      Serial.println("RStep");
     }
 
-    delayMPU();
+    //delayMPU();
+    delayMicroseconds(timeIncrement);
+
+    //Serial.print(maxValue * calculationAccuracy); Serial.print(","); Serial.println(i);
   }
+
+  Serial.println("post transition");
 
   if (bStepped) digitalWrite(BASESTP,  LOW);
   if (pStepped) digitalWrite(PITCHSTP, LOW);
@@ -196,6 +243,8 @@ void transitionGimbal(float y, float p, float r){
 
 void delayMPU(){//replaces the ms delay to make the instructions useful
   tcaselect(mpuSelection);//select the MPU
+
+  delayMicroseconds(400);
   
   readOutAccelGyro();//print all MPU values
 
