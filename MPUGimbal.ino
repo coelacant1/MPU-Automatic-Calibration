@@ -13,19 +13,20 @@ MPU6050 accelgyro;
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-const int BASESTP = 60;
-const int BASEDIR = 61;
-const int BASEENA = 56;
-const int PITCHSTP = 54;
-const int PITCHDIR = 55;
-const int PITCHENA = 38;
-const int SERVOPIN = 11;
+const int BASESTP  = 0;
+const int BASEDIR  = 1;
+const int PITCHSTP = 2;
+const int PITCHDIR = 3;
+const int ACTUSTP  = 4;
+const int ACTUDIR  = 5;
+const int SERVOPIN = 6;
 
 Servo roll;
 
 float basePosition = 0.0f;
 float pitchPosition = 0.0f;
 float rollPosition = 0.0f;
+float actuPosition = 0.0f;
 
 const long calculationAccuracy = 100;
 const int stepTime = 500;//microseconds
@@ -45,10 +46,10 @@ void tcaselect(uint8_t i) {
 void setup() {
     pinMode(BASESTP,  OUTPUT);
     pinMode(BASEDIR,  OUTPUT);
-    pinMode(BASEENA,  OUTPUT);
     pinMode(PITCHSTP, OUTPUT);
     pinMode(PITCHDIR, OUTPUT);
-    pinMode(PITCHENA, OUTPUT);
+    pinMode(ACTUSTP, OUTPUT);
+    pinMode(ACTUDIR, OUTPUT);
   
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
@@ -56,10 +57,11 @@ void setup() {
     
     digitalWrite(BASESTP,  LOW);
     digitalWrite(PITCHSTP, LOW);
-    digitalWrite(BASEENA,  LOW);
-    digitalWrite(PITCHENA, LOW);
+    digitalWrite(ACTUSTP, LOW);
     digitalWrite(BASEDIR,  HIGH);
     digitalWrite(PITCHDIR, HIGH);
+    digitalWrite(ACTUDIR, HIGH);
+    
 
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
@@ -82,15 +84,23 @@ void setup() {
 
       delay(100);
     }
-    
-    
 }
 
 void loop() {
-    transitionGimbal( 90,   90,  90);
+  /*
+    transitionGimbal( 90,   90,  90, 0);
     delay(5000);
-    transitionGimbal(-90, -90, 0);
+    transitionGimbal(-90, -90, 0, 8000);//100 mm transition
     delay(5000);
+    */
+
+    digitalWrite(ACTUSTP, HIGH);
+
+    delayMicroseconds(5);
+    
+    digitalWrite(ACTUSTP,  LOW);
+
+    delayMicroseconds(500);
 }
 
 void readOutAccelGyro(){
@@ -106,7 +116,7 @@ void readOutAccelGyro(){
     Serial.print(gz);                         Serial.print(";");
 }
 
-void transitionGimbal(float y, float p, float r){
+void transitionGimbal(float y, float p, float r, float a){
   Serial.println("transition");
   y = (800.0f / 90.0f) * y;//0.1125 degrees
   p = (800.0f / 90.0f) * p;
@@ -117,19 +127,22 @@ void transitionGimbal(float y, float p, float r){
   else if (y < basePosition)  digitalWrite(BASEDIR,  LOW);
   if      (p > pitchPosition) digitalWrite(PITCHDIR,  HIGH);
   else if (p < pitchPosition) digitalWrite(PITCHDIR,  LOW);
+  if      (a > actuPosition)  digitalWrite(ACTUDIR,  HIGH);
+  else if (a < actuPosition)  digitalWrite(ACTUDIR,  LOW);
   float rMod = (r >= rollPosition) ? 1 : -1;
 
   //total distance covered during transition
   float baseDistance  = abs(basePosition  - y);
   float pitchDistance = abs(pitchPosition - p);
   float rollDistance  = abs(rollPosition  - r);
+  float actuDistance  = abs(actuPosition  - a);
 
   //for(float yI = 0; yI < abs(basePosition - y); yI++)
 
   //highest degree of change to calculate incrementation
-  float maxDistance = max(baseDistance, max(pitchDistance, rollDistance));
+  float maxDistance = max(baseDistance, max(pitchDistance, max(rollDistance, actuDistance)));
 
-  long baseIncrements, pitchIncrements, rollIncrements;
+  long baseIncrements, pitchIncrements, rollIncrements, actuIncrements;
   
   //100 / 100 * 100 = 100; 1600 / 1600 * 100 = 100
   //amount of steps skipped before stepper is moved
@@ -154,29 +167,41 @@ void transitionGimbal(float y, float p, float r){
     rollIncrements  = (long)((maxDistance / rollDistance)  * calculationAccuracy);
   }
   
-  long maxIncrements = max(baseIncrements, max(pitchIncrements, rollIncrements));
+  if(actuDistance  < 1){
+    actuIncrements = (long)(maxDistance  * calculationAccuracy);
+  }
+  else{
+    actuIncrements  = (long)((maxDistance / actuDistance)  * calculationAccuracy);
+  }
+  
+  long maxIncrements = max(baseIncrements, max(pitchIncrements, max(rollIncrements, actuIncrements)));
 
   //incrementer for triggering step
   long bI = baseIncrements;
   long pI = pitchIncrements;
   long rI = rollIncrements;
+  long aI = rollIncrements;
 
   long bIO = 0;//stepper off time incrementer
   long pIO = 0;
+  long aIO = 0;
   
   Serial.print("DISTANCE: ");  Serial.print(",");
   Serial.print(baseDistance);  Serial.print(",");
   Serial.print(pitchDistance); Serial.print(",");
-  Serial.print(rollDistance);  Serial.println();
+  Serial.print(rollDistance);  Serial.print(",");
+  Serial.print(actuDistance);  Serial.println();
 
   Serial.print("INCREMENTS: ");  Serial.print(",");
   Serial.print(baseIncrements);  Serial.print(",");
   Serial.print(pitchIncrements); Serial.print(",");
-  Serial.print(rollIncrements);  Serial.println();
+  Serial.print(rollIncrements); Serial.print(",");
+  Serial.print(actuIncrements);  Serial.println();
 
   //used to know when to turn a step signal off
   bool bStepped = false;
   bool pStepped = false;
+  bool aStepped = false;
 
   Serial.print("FOR:"); Serial.println(maxDistance * calculationAccuracy);
 
@@ -186,7 +211,8 @@ void transitionGimbal(float y, float p, float r){
       Serial.print(i);   Serial.print(",");
       Serial.print(bI);  Serial.print(",");
       Serial.print(pI);  Serial.print(",");
-      Serial.print(rI);  Serial.println(",");
+      Serial.print(rI);  Serial.print(",");
+      Serial.print(aI);  Serial.println(",");
     }
     
     if(bI < baseIncrements){
@@ -242,6 +268,25 @@ void transitionGimbal(float y, float p, float r){
       }
     }
 
+    if(aI < actuIncrements){
+      aI++;
+    }
+    else{
+      aI = 0;
+      digitalWrite(ACTUSTP, HIGH);
+      aStepped = true;
+      if(DEBUG)Serial.println("ASTEP");
+    }
+    
+    if(aStepped && aIO * timeIncrement < minimumStepTime){
+      aIO++;
+    }
+    else if (aStepped){
+      aIO = 0;
+      digitalWrite(ACTUSTP,  LOW);
+      aStepped = false;
+      if(DEBUG)Serial.println("ASTEP OFF");
+    }
 
     //delayMPU();
     delayMicroseconds(timeIncrement);
@@ -253,10 +298,12 @@ void transitionGimbal(float y, float p, float r){
 
   if (bStepped) digitalWrite(BASESTP,  LOW);
   if (pStepped) digitalWrite(PITCHSTP, LOW);
+  if (aStepped) digitalWrite(ACTUSTP, LOW);
   
   basePosition  = y;
   pitchPosition = p;
   rollPosition  = r;
+  actuPosition  = a;
 
   delayMPU();//give time to allow the stepper drivers to be set low
 }
