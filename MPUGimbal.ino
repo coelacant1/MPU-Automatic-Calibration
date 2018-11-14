@@ -8,7 +8,7 @@
 
 MPU6050 accelgyro;
 #define TCAADDR 0x70
-#define DEBUG false
+#define DEBUG true
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
@@ -20,13 +20,14 @@ const int PITCHDIR = 3;
 const int ACTUSTP  = 4;
 const int ACTUDIR  = 5;
 const int SERVOPIN = 6;
+const int LEDPIN   = 13;
 
 Servo roll;
 
-float basePosition = 0.0f;
-float pitchPosition = 0.0f;
-float rollPosition = 0.0f;
-float actuPosition = 0.0f;
+float basePosition = 800.0f;
+float pitchPosition = 800.0f;
+float rollPosition = 800.0f;
+float actuPosition = 500.0f * 80.0f;
 
 const long calculationAccuracy = 100;
 const int stepTime = 500;//microseconds
@@ -50,10 +51,11 @@ void setup() {
     pinMode(PITCHDIR, OUTPUT);
     pinMode(ACTUSTP, OUTPUT);
     pinMode(ACTUDIR, OUTPUT);
+    pinMode(LEDPIN, OUTPUT);
   
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
-    roll.write(0);//Center servo
+    roll.write(90);//Center servo
     
     digitalWrite(BASESTP,  LOW);
     digitalWrite(PITCHSTP, LOW);
@@ -61,14 +63,14 @@ void setup() {
     digitalWrite(BASEDIR,  HIGH);
     digitalWrite(PITCHDIR, HIGH);
     digitalWrite(ACTUDIR, HIGH);
-    
+    digitalWrite(LEDPIN, HIGH);
 
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
     #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
         Fastwire::setup(400, true);
     #endif
-
+    
     Serial.begin(115200);
 
     for (int i = 0; i < 8; i++){
@@ -86,21 +88,21 @@ void setup() {
     }
 }
 
-void loop() {
-  /*
-    transitionGimbal( 90,   90,  90, 0);
+void loop() { 
+    transitionGimbal( 90, 90, 90, 500);
     delay(5000);
-    transitionGimbal(-90, -90, 0, 8000);//100 mm transition
+    transitionGimbal( 180, 90, 90, 500);//100 mm transition
     delay(5000);
-    */
-
-    digitalWrite(ACTUSTP, HIGH);
-
-    delayMicroseconds(5);
     
-    digitalWrite(ACTUSTP,  LOW);
+    /*
+    digitalWrite(BASESTP, HIGH);
 
-    delayMicroseconds(500);
+    delay(50);
+    
+    digitalWrite(BASESTP,  LOW);
+
+    delay(100);
+    */
 }
 
 void readOutAccelGyro(){
@@ -121,6 +123,7 @@ void transitionGimbal(float y, float p, float r, float a){
   y = (800.0f / 90.0f) * y;//0.1125 degrees
   p = (800.0f / 90.0f) * p;
   r = (800.0f / 90.0f) * r;//scale servo output to stepper range moving at 0.1125 degree increments
+  a = a * 80.0f;//mm * steps/mm
 
   //Set stepper motor directions for transition
   if      (y > basePosition)  digitalWrite(BASEDIR,  HIGH);
@@ -205,9 +208,11 @@ void transitionGimbal(float y, float p, float r, float a){
 
   Serial.print("FOR:"); Serial.println(maxDistance * calculationAccuracy);
 
+  digitalWrite(LEDPIN, LOW);
+  
   //performs the transition
   for(long i = 0; i < maxDistance * calculationAccuracy; i++){
-    if(DEBUG){
+    if(DEBUG && false){
       Serial.print(i);   Serial.print(",");
       Serial.print(bI);  Serial.print(",");
       Serial.print(pI);  Serial.print(",");
@@ -264,7 +269,7 @@ void transitionGimbal(float y, float p, float r, float a){
       roll.write(rollPosition * 0.1125f);//move servo same increment as stepper at 1/16th mstepping
       if(DEBUG){
         Serial.println("RStep");
-        Serial.println((rollPosition * 0.1125f));
+        //Serial.println((rollPosition * 0.1125f));
       }
     }
 
@@ -300,12 +305,14 @@ void transitionGimbal(float y, float p, float r, float a){
   if (pStepped) digitalWrite(PITCHSTP, LOW);
   if (aStepped) digitalWrite(ACTUSTP, LOW);
   
+  digitalWrite(LEDPIN, HIGH);
+  
   basePosition  = y;
   pitchPosition = p;
   rollPosition  = r;
   actuPosition  = a;
 
-  delayMPU();//give time to allow the stepper drivers to be set low
+  //delayMPU();//give time to allow the stepper drivers to be set low
 }
 
 void delayMPU(){//replaces the ms delay to make the instructions useful
