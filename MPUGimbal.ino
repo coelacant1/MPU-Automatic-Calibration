@@ -8,18 +8,19 @@
 
 MPU6050 accelgyro;
 #define TCAADDR 0x70
-#define DEBUG true
+#define DEBUG false
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-const int BASESTP  = 0;
-const int BASEDIR  = 1;
-const int PITCHSTP = 2;
-const int PITCHDIR = 3;
-const int ACTUSTP  = 4;
-const int ACTUDIR  = 5;
-const int SERVOPIN = 6;
+const int ENABLE   = 2;
+const int BASESTP  = 3;
+const int BASEDIR  = 4;
+const int PITCHSTP = 5;
+const int PITCHDIR = 6;
+const int ACTUSTP  = 7;
+const int ACTUDIR  = 8;
+const int SERVOPIN = 9;
 const int LEDPIN   = 13;
 
 Servo roll;
@@ -29,8 +30,8 @@ float pitchPosition = 800.0f;
 float rollPosition = 800.0f;
 float actuPosition = 500.0f * 80.0f;
 
-const long calculationAccuracy = 100;
-const int stepTime = 500;//microseconds
+const long calculationAccuracy = 25;
+const int stepTime = 25;//microseconds
 const int timeIncrement = stepTime / calculationAccuracy;
 const int minimumStepTime = 1;//microseconds
 
@@ -45,6 +46,7 @@ void tcaselect(uint8_t i) {
 }
 
 void setup() {
+    pinMode(ENABLE, OUTPUT);
     pinMode(BASESTP,  OUTPUT);
     pinMode(BASEDIR,  OUTPUT);
     pinMode(PITCHSTP, OUTPUT);
@@ -56,7 +58,8 @@ void setup() {
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
     roll.write(90);//Center servo
-    
+
+    digitalWrite(ENABLE, LOW);
     digitalWrite(BASESTP,  LOW);
     digitalWrite(PITCHSTP, LOW);
     digitalWrite(ACTUSTP, LOW);
@@ -91,7 +94,9 @@ void setup() {
 void loop() { 
     transitionGimbal( 90, 90, 90, 500);
     delay(5000);
-    transitionGimbal( 180, 90, 90, 500);//100 mm transition
+    transitionGimbal( 180, 180, 180, 900);//100 mm transition
+    delay(5000);
+    transitionGimbal( 0, 0, 0, 100);//100 mm transition
     delay(5000);
     
     /*
