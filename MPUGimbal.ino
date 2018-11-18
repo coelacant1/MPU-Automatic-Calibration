@@ -1,6 +1,7 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include <Servo.h>
+#include "DirectIO.h"
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
@@ -13,15 +14,17 @@ MPU6050 accelgyro;
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-const int ENABLE   = 2;
-const int BASESTP  = 3;
-const int BASEDIR  = 4;
-const int PITCHSTP = 5;
-const int PITCHDIR = 6;
-const int ACTUSTP  = 7;
-const int ACTUDIR  = 8;
 const int SERVOPIN = 9;
-const int LEDPIN   = 13;
+
+Output<2> ENABLE(LOW);
+Output<3> BASESTP(LOW);
+Output<4> BASEDIR(HIGH);
+Output<5> PITCHSTP(LOW);
+Output<6> PITCHDIR(HIGH);
+Output<7> ACTUSTP(LOW);
+Output<8> ACTUDIR(HIGH);
+//Output<9> ENABLE(LOW);
+Output<13> LEDPIN(HIGH);
 
 Servo roll;
 
@@ -30,12 +33,14 @@ float pitchPosition = 800.0f;
 float rollPosition = 800.0f;
 float actuPosition = 500.0f * 80.0f;
 
-const long calculationAccuracy = 25;
-const int stepTime = 25;//microseconds
+const long calculationAccuracy = 10;
+const int stepTime = 10;//microseconds
 const int timeIncrement = stepTime / calculationAccuracy;
 const int minimumStepTime = 1;//microseconds
 
 byte mpuSelection = 0;
+byte readPosition = 0;
+byte previousMPU  = 7;
 
 void tcaselect(uint8_t i) {
   if (i > 7) return;
@@ -46,6 +51,7 @@ void tcaselect(uint8_t i) {
 }
 
 void setup() {
+  /*
     pinMode(ENABLE, OUTPUT);
     pinMode(BASESTP,  OUTPUT);
     pinMode(BASEDIR,  OUTPUT);
@@ -54,11 +60,12 @@ void setup() {
     pinMode(ACTUSTP, OUTPUT);
     pinMode(ACTUDIR, OUTPUT);
     pinMode(LEDPIN, OUTPUT);
+    */
   
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
     roll.write(90);//Center servo
-
+    /*
     digitalWrite(ENABLE, LOW);
     digitalWrite(BASESTP,  LOW);
     digitalWrite(PITCHSTP, LOW);
@@ -67,6 +74,7 @@ void setup() {
     digitalWrite(PITCHDIR, HIGH);
     digitalWrite(ACTUDIR, HIGH);
     digitalWrite(LEDPIN, HIGH);
+    */
 
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
@@ -74,7 +82,7 @@ void setup() {
         Fastwire::setup(400, true);
     #endif
     
-    Serial.begin(115200);
+    Serial.begin(2000000);
 
     for (int i = 0; i < 8; i++){
       tcaselect(i);
@@ -96,6 +104,8 @@ void loop() {
     delay(5000);
     transitionGimbal( 180, 180, 180, 900);//100 mm transition
     delay(5000);
+    transitionGimbal( 90, 90, 90, 500);
+    delay(5000);
     transitionGimbal( 0, 0, 0, 100);//100 mm transition
     delay(5000);
     
@@ -110,17 +120,35 @@ void loop() {
     */
 }
 
-void readOutAccelGyro(){
+void readOutAccelGyro(int pos){
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-    Serial.print(mpuSelection);               Serial.print(",");//show which mpu is printing
-    Serial.print(accelgyro.getTemperature()); Serial.print(",");
-    Serial.print(ax);                         Serial.print(",");
-    Serial.print(ay);                         Serial.print(",");
-    Serial.print(az);                         Serial.print(",");
-    Serial.print(gx);                         Serial.print(",");
-    Serial.print(gy);                         Serial.print(",");
-    Serial.print(gz);                         Serial.print(";");
+
+    switch(pos){
+      case 0:
+        Serial.print(mpuSelection);               Serial.print(",");//show which mpu is printing
+        break;
+      case 1:
+        Serial.print(accelgyro.getTemperature()); Serial.print(",");
+        break;
+      case 2:
+        Serial.print(ax);                         Serial.print(",");
+        break;
+      case 3:
+        Serial.print(ay);                         Serial.print(",");
+        break;
+      case 4:
+        Serial.print(az);                         Serial.print(",");
+        break;
+      case 5:
+        Serial.print(gx);                         Serial.print(",");
+        break;
+      case 6:
+        Serial.print(gy);                         Serial.print(",");
+        break;
+      case 7:
+        Serial.print(gz);                         Serial.print(";");
+        break;
+    }
 }
 
 void transitionGimbal(float y, float p, float r, float a){
@@ -131,12 +159,12 @@ void transitionGimbal(float y, float p, float r, float a){
   a = a * 80.0f;//mm * steps/mm
 
   //Set stepper motor directions for transition
-  if      (y > basePosition)  digitalWrite(BASEDIR,  HIGH);
-  else if (y < basePosition)  digitalWrite(BASEDIR,  LOW);
-  if      (p > pitchPosition) digitalWrite(PITCHDIR,  HIGH);
-  else if (p < pitchPosition) digitalWrite(PITCHDIR,  LOW);
-  if      (a > actuPosition)  digitalWrite(ACTUDIR,  HIGH);
-  else if (a < actuPosition)  digitalWrite(ACTUDIR,  LOW);
+  if      (y > basePosition)  BASEDIR = HIGH;
+  else if (y < basePosition)  BASEDIR = LOW;
+  if      (p > pitchPosition) PITCHDIR = HIGH;
+  else if (p < pitchPosition) PITCHDIR = LOW;
+  if      (a > actuPosition)  ACTUDIR = HIGH;
+  else if (a < actuPosition)  ACTUDIR =  LOW;
   float rMod = (r >= rollPosition) ? 1 : -1;
 
   //total distance covered during transition
@@ -213,10 +241,11 @@ void transitionGimbal(float y, float p, float r, float a){
 
   Serial.print("FOR:"); Serial.println(maxDistance * calculationAccuracy);
 
-  digitalWrite(LEDPIN, LOW);
+  LEDPIN = LOW;
   
   //performs the transition
   for(long i = 0; i < maxDistance * calculationAccuracy; i++){
+    /*
     if(DEBUG && false){
       Serial.print(i);   Serial.print(",");
       Serial.print(bI);  Serial.print(",");
@@ -224,15 +253,17 @@ void transitionGimbal(float y, float p, float r, float a){
       Serial.print(rI);  Serial.print(",");
       Serial.print(aI);  Serial.println(",");
     }
+    */
     
     if(bI < baseIncrements){
       bI++;
     }
     else{
       bI = 0;
-      digitalWrite(BASESTP, HIGH);
+      //digitalWrite(BASESTP, HIGH);
+      BASESTP = HIGH;
       bStepped = true;
-      if(DEBUG)Serial.println("BSTEP");
+      //if(DEBUG)Serial.println("BSTEP");
     }
       
     if(bStepped && bIO * timeIncrement < minimumStepTime){
@@ -240,9 +271,10 @@ void transitionGimbal(float y, float p, float r, float a){
     }
     else if (bStepped){
       bIO = 0;
-      digitalWrite(BASESTP,  LOW);
+      //digitalWrite(BASESTP,  LOW);
+      BASESTP = LOW;
       bStepped = false;
-      if(DEBUG)Serial.println("BSTEP OFF");
+      //if(DEBUG)Serial.println("BSTEP OFF");
     }
     
     if(pI < pitchIncrements){
@@ -250,9 +282,10 @@ void transitionGimbal(float y, float p, float r, float a){
     }
     else{
       pI = 0;
-      digitalWrite(PITCHSTP, HIGH);
+      //digitalWrite(PITCHSTP, HIGH);
+      PITCHSTP = HIGH;
       pStepped = true;
-      if(DEBUG)Serial.println("PSTEP");
+      //if(DEBUG)Serial.println("PSTEP");
     }
     
     if(pStepped && pIO * timeIncrement < minimumStepTime){
@@ -260,9 +293,10 @@ void transitionGimbal(float y, float p, float r, float a){
     }
     else if (pStepped){
       pIO = 0;
-      digitalWrite(PITCHSTP,  LOW);
+      //digitalWrite(PITCHSTP,  LOW);
+      PITCHSTP = LOW;
       pStepped = false;
-      if(DEBUG)Serial.println("PSTEP OFF");
+      //if(DEBUG)Serial.println("PSTEP OFF");
     }
     
     if(rI < rollIncrements){
@@ -272,10 +306,7 @@ void transitionGimbal(float y, float p, float r, float a){
       rollPosition = rollPosition + rMod;
       rI = 0;
       roll.write(rollPosition * 0.1125f);//move servo same increment as stepper at 1/16th mstepping
-      if(DEBUG){
-        Serial.println("RStep");
-        //Serial.println((rollPosition * 0.1125f));
-      }
+      //if(DEBUG){Serial.println("RStep");}
     }
 
     if(aI < actuIncrements){
@@ -283,9 +314,10 @@ void transitionGimbal(float y, float p, float r, float a){
     }
     else{
       aI = 0;
-      digitalWrite(ACTUSTP, HIGH);
+      //digitalWrite(ACTUSTP, HIGH);
+      ACTUSTP = HIGH;
       aStepped = true;
-      if(DEBUG)Serial.println("ASTEP");
+      //if(DEBUG)Serial.println("ASTEP");
     }
     
     if(aStepped && aIO * timeIncrement < minimumStepTime){
@@ -293,24 +325,31 @@ void transitionGimbal(float y, float p, float r, float a){
     }
     else if (aStepped){
       aIO = 0;
-      digitalWrite(ACTUSTP,  LOW);
+      //digitalWrite(ACTUSTP,  LOW);
+      ACTUSTP = LOW;
       aStepped = false;
-      if(DEBUG)Serial.println("ASTEP OFF");
+      //if(DEBUG)Serial.println("ASTEP OFF");
     }
 
     //delayMPU();
-    delayMicroseconds(timeIncrement);
+    //delayMicroseconds(timeIncrement);
 
     //Serial.print(maxValue * calculationAccuracy); Serial.print(","); Serial.println(i);
   }
 
   Serial.println("post transition");
 
+  /*
   if (bStepped) digitalWrite(BASESTP,  LOW);
   if (pStepped) digitalWrite(PITCHSTP, LOW);
   if (aStepped) digitalWrite(ACTUSTP, LOW);
+  */
   
-  digitalWrite(LEDPIN, HIGH);
+  if (bStepped) BASESTP = LOW;
+  if (pStepped) PITCHSTP = LOW;
+  if (aStepped) ACTUSTP = LOW;
+  
+  LEDPIN = HIGH;
   
   basePosition  = y;
   pitchPosition = p;
@@ -321,17 +360,23 @@ void transitionGimbal(float y, float p, float r, float a){
 }
 
 void delayMPU(){//replaces the ms delay to make the instructions useful
-  tcaselect(mpuSelection);//select the MPU
-
-  delayMicroseconds(400);
+  if(readPosition == 0){
+    tcaselect(mpuSelection);//select the MPU
+    
+    previousMPU = mpuSelection;
+    mpuSelection++;//increment to the next mpu
+    
+    if(mpuSelection > 7){//check if the max multiplexer value is selected, then print a new line
+      mpuSelection = 0;
+      //Serial.println();
+    }
+  }
   
-  readOutAccelGyro();//print all MPU values
-
-  mpuSelection++;//increment to the next mpu
+  //readOutAccelGyro(readPosition);//print all MPU values
+  readPosition++;
   
-  if(mpuSelection > 7){//check if the max multiplexer value is selected, then print a new line
-    mpuSelection = 0;
-    Serial.println();
+  if(readPosition > 7){
+    readPosition = 0;
   }
 }
 
