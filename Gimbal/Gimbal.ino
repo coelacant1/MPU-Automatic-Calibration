@@ -1,18 +1,5 @@
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
 #include <Servo.h>
 #include "DirectIO.h"
-
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-    #include "Wire.h"
-#endif
-
-MPU6050 accelgyro;
-#define TCAADDR 0x70
-#define DEBUG false
-
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
 
 const int SERVOPIN = 9;
 
@@ -23,7 +10,6 @@ Output<5> PITCHSTP(LOW);
 Output<6> PITCHDIR(HIGH);
 Output<7> ACTUSTP(LOW);
 Output<8> ACTUDIR(HIGH);
-//Output<9> ENABLE(LOW);
 Output<13> LEDPIN(HIGH);
 
 Servo roll;
@@ -38,65 +24,12 @@ const int stepTime = 10;//microseconds
 const int timeIncrement = stepTime / calculationAccuracy;
 const int minimumStepTime = 1;//microseconds
 
-byte mpuSelection = 0;
-byte readPosition = 0;
-byte previousMPU  = 7;
-
-void tcaselect(uint8_t i) {
-  if (i > 7) return;
- 
-  Wire.beginTransmission(TCAADDR);
-  Wire.write(1 << i);
-  Wire.endTransmission();  
-}
-
 void setup() {
-  /*
-    pinMode(ENABLE, OUTPUT);
-    pinMode(BASESTP,  OUTPUT);
-    pinMode(BASEDIR,  OUTPUT);
-    pinMode(PITCHSTP, OUTPUT);
-    pinMode(PITCHDIR, OUTPUT);
-    pinMode(ACTUSTP, OUTPUT);
-    pinMode(ACTUDIR, OUTPUT);
-    pinMode(LEDPIN, OUTPUT);
-    */
-  
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
     roll.write(90);//Center servo
-    /*
-    digitalWrite(ENABLE, LOW);
-    digitalWrite(BASESTP,  LOW);
-    digitalWrite(PITCHSTP, LOW);
-    digitalWrite(ACTUSTP, LOW);
-    digitalWrite(BASEDIR,  HIGH);
-    digitalWrite(PITCHDIR, HIGH);
-    digitalWrite(ACTUDIR, HIGH);
-    digitalWrite(LEDPIN, HIGH);
-    */
-
-    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-        Wire.begin();
-    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-        Fastwire::setup(400, true);
-    #endif
     
     Serial.begin(2000000);
-
-    for (int i = 0; i < 8; i++){
-      tcaselect(i);
-      
-      // initialize device
-      Serial.println("Initializing I2C devices...");
-      accelgyro.initialize();
-  
-      // verify connection
-      Serial.println("Testing device connections...");
-      Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
-
-      delay(100);
-    }
 }
 
 void loop() { 
@@ -108,47 +41,6 @@ void loop() {
     delay(5000);
     transitionGimbal( 0, 0, 0, 100);//100 mm transition
     delay(5000);
-    
-    /*
-    digitalWrite(BASESTP, HIGH);
-
-    delay(50);
-    
-    digitalWrite(BASESTP,  LOW);
-
-    delay(100);
-    */
-}
-
-void readOutAccelGyro(int pos){
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-    switch(pos){
-      case 0:
-        Serial.print(mpuSelection);               Serial.print(",");//show which mpu is printing
-        break;
-      case 1:
-        Serial.print(accelgyro.getTemperature()); Serial.print(",");
-        break;
-      case 2:
-        Serial.print(ax);                         Serial.print(",");
-        break;
-      case 3:
-        Serial.print(ay);                         Serial.print(",");
-        break;
-      case 4:
-        Serial.print(az);                         Serial.print(",");
-        break;
-      case 5:
-        Serial.print(gx);                         Serial.print(",");
-        break;
-      case 6:
-        Serial.print(gy);                         Serial.print(",");
-        break;
-      case 7:
-        Serial.print(gz);                         Serial.print(";");
-        break;
-    }
 }
 
 void transitionGimbal(float y, float p, float r, float a){
@@ -358,25 +250,3 @@ void transitionGimbal(float y, float p, float r, float a){
 
   //delayMPU();//give time to allow the stepper drivers to be set low
 }
-
-void delayMPU(){//replaces the ms delay to make the instructions useful
-  if(readPosition == 0){
-    tcaselect(mpuSelection);//select the MPU
-    
-    previousMPU = mpuSelection;
-    mpuSelection++;//increment to the next mpu
-    
-    if(mpuSelection > 7){//check if the max multiplexer value is selected, then print a new line
-      mpuSelection = 0;
-      //Serial.println();
-    }
-  }
-  
-  //readOutAccelGyro(readPosition);//print all MPU values
-  readPosition++;
-  
-  if(readPosition > 7){
-    readPosition = 0;
-  }
-}
-
