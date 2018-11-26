@@ -24,12 +24,15 @@ const int stepTime = 10;//microseconds
 const int timeIncrement = stepTime / calculationAccuracy;
 const int minimumStepTime = 1;//microseconds
 
+int motorWrite = 0;
+
 void setup() {
     roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
     roll.write(90);//Center servo
     
-    Serial.begin(2000000);
+    Serial.begin(250000);
+    Serial1.begin(250000);
 }
 
 void loop() { 
@@ -123,7 +126,7 @@ void transitionGimbal(float y, float p, float r, float a){
   Serial.print("INCREMENTS: ");  Serial.print(",");
   Serial.print(baseIncrements);  Serial.print(",");
   Serial.print(pitchIncrements); Serial.print(",");
-  Serial.print(rollIncrements); Serial.print(",");
+  Serial.print(rollIncrements);  Serial.print(",");
   Serial.print(actuIncrements);  Serial.println();
 
   //used to know when to turn a step signal off
@@ -134,6 +137,10 @@ void transitionGimbal(float y, float p, float r, float a){
   Serial.print("FOR:"); Serial.println(maxDistance * calculationAccuracy);
 
   LEDPIN = LOW;
+
+  long writeIncrements = (int)(maxDistance * calculationAccuracy / 100.0f);
+  long wI = 0;
+  int writeCount = 0;
   
   //performs the transition
   for(long i = 0; i < maxDistance * calculationAccuracy; i++){
@@ -146,6 +153,18 @@ void transitionGimbal(float y, float p, float r, float a){
       Serial.print(aI);  Serial.println(",");
     }
     */
+
+    if(wI < writeIncrements){
+      wI++;
+    }
+    else if (writeCount < 4){
+      writeMotorOut(writeCount);
+      writeCount++;
+    }
+    else{
+      wI = 0;
+      writeCount = 0;
+    }
     
     if(bI < baseIncrements){
       bI++;
@@ -155,6 +174,8 @@ void transitionGimbal(float y, float p, float r, float a){
       //digitalWrite(BASESTP, HIGH);
       BASESTP = HIGH;
       bStepped = true;
+      if      (y > basePosition)  basePosition += 1;
+      else if (y < basePosition)  basePosition -= 1;
       //if(DEBUG)Serial.println("BSTEP");
     }
       
@@ -177,6 +198,8 @@ void transitionGimbal(float y, float p, float r, float a){
       //digitalWrite(PITCHSTP, HIGH);
       PITCHSTP = HIGH;
       pStepped = true;
+      if      (p > pitchPosition)  pitchPosition += 1;
+      else if (p < pitchPosition)  pitchPosition -= 1;
       //if(DEBUG)Serial.println("PSTEP");
     }
     
@@ -209,6 +232,8 @@ void transitionGimbal(float y, float p, float r, float a){
       //digitalWrite(ACTUSTP, HIGH);
       ACTUSTP = HIGH;
       aStepped = true;
+      if      (a > actuPosition)  actuPosition += 1;
+      else if (a < actuPosition)  actuPosition -= 1;
       //if(DEBUG)Serial.println("ASTEP");
     }
     
@@ -249,4 +274,25 @@ void transitionGimbal(float y, float p, float r, float a){
   actuPosition  = a;
 
   //delayMPU();//give time to allow the stepper drivers to be set low
+}
+
+void writeMotorOut(int pos){
+  switch(pos){
+    case 0:
+      Serial.print(actuPosition);   Serial.print(",");
+      Serial1.print(actuPosition);   Serial1.print(",");
+      break;
+    case 1:
+      Serial.print(basePosition);   Serial.print(",");
+      Serial1.print(basePosition);   Serial1.print(",");
+      break;
+    case 2:
+      Serial.print(pitchPosition);  Serial.print(",");
+      Serial1.print(pitchPosition);  Serial1.print(",");
+      break;
+    case 3:
+      Serial.print(rollPosition);   Serial.println();
+      Serial1.print(rollPosition);   Serial1.println();
+      break;
+  }
 }
