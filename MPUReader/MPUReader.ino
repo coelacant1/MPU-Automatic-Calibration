@@ -41,11 +41,11 @@ void setup() {
       Fastwire::setup(400, true);
   #endif
   
-  Serial.begin(250000);
-  Serial1.begin(250000);
+  Serial.begin(115200);
+  //Serial1.begin(250000);
 
   //Serial1.
-  getMotorPositions();
+  //getMotorPositions();
 
   delay(200);
 
@@ -58,7 +58,7 @@ void setup() {
     Serial.println("Initializing I2C devices...");
     accelgyro.initialize();
 
-    delay(50);
+    delay(100);
 
     // verify connection
     Serial.println("Testing device connections...");
@@ -78,8 +78,8 @@ void readOutAccelGyro(){
 
     float temperature = ((float)accelgyro.getTemperature() + 12412.0f) / 340.0f;
 
-    Serial.print(mpuSelection);               Serial.print(",");//show which mpu is printing
-    Serial.print(temperature);                Serial.print(",");
+    //Serial.print(mpuSelection);               Serial.print(",");//show which mpu is printing
+    //Serial.print(temperature);                Serial.print(",");
     Serial.print(ax);                         Serial.print(",");
     Serial.print(ay);                         Serial.print(",");
     Serial.print(az);                         Serial.print(",");
@@ -89,7 +89,9 @@ void readOutAccelGyro(){
 }
 
 void readMPU(){
-  tcaselect(mpuSelection);//select the MPU
+  //tcaselect(mpuSelection);//select the MPU
+  
+  readOutAccelGyro();//print all MPU values
   
   previousMPU = mpuSelection;
   mpuSelection++;//increment to the next mpu
@@ -97,16 +99,15 @@ void readMPU(){
   if(mpuSelection > 7){//check if the max multiplexer value is selected, then print a new line
     mpuSelection = 0;
     Serial.println();
-    getMotorPositions();
-    Serial.print(linear);                     Serial.print(",");
-    Serial.print(base);                       Serial.print(",");
-    Serial.print(outer);                      Serial.print(",");
-    Serial.print(inner);                      Serial.print(";");
+    //getMotorPositions();
+    //Serial.print(linear);                     Serial.print(",");
+    //Serial.print(base);                       Serial.print(",");
+    //Serial.print(outer);                      Serial.print(",");
+    //Serial.print(inner);                      Serial.print(";");
   }
   
-  readOutAccelGyro();//print all MPU values
 }
-
+/*
 String serial1ReadLine(){
   String inData;
   
@@ -151,3 +152,4 @@ void getMotorPositions(){
   outer  = getValue(data, ',', 2).toFloat();
   inner  = getValue(data, ',', 3).toFloat();
 }
+*/

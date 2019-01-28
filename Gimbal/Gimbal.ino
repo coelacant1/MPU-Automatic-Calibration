@@ -1,5 +1,5 @@
 #include <digitalWriteFast.h>
-//#include <Servo.h>
+#include <Servo.h>
 
 const int SERVOPIN = 9;
 
@@ -12,7 +12,7 @@ const int SERVOPIN = 9;
 #define ACTUDIR 8
 #define LEDPIN 13
 
-//Servo roll;
+Servo roll;
 
 float basePosition = 800.0f;
 float pitchPosition = 800.0f;
@@ -52,9 +52,9 @@ void setup() {
     digitalWriteFast(ACTUDIR, HIGH);
     digitalWriteFast(LEDPIN, HIGH);
     
-    //roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
+    roll.attach(SERVOPIN, 425, 2225);//initialize servo and set range
 
-    //roll.write(90);//Center servo
+    roll.write(90);//Center servo
     
     //Serial.begin(250000);
     //Serial1.begin(250000);
@@ -242,6 +242,7 @@ void transitionGimbal(float y, float p, float r, float a){
     else{
       rollPosition = rollPosition + rMod;
       rI = 0;
+      roll.write(rollPosition * 0.1125f);
     }
 
     if(aI < actuIncrements){
