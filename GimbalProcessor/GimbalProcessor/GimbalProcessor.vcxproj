@@ -163,6 +163,9 @@
     <ClInclude Include="FeedbackController.h" />
     <ClInclude Include="FiniteImpulseResponse.h" />
     <ClInclude Include="GimbalManager.h" />
+    <ClInclude Include="GimbalState.h" />
+    <ClInclude Include="MPUParser.h" />
+    <ClInclude Include="MPUState.h" />
     <ClInclude Include="HighPassFilter.h" />
     <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="LeastSquares.h" />

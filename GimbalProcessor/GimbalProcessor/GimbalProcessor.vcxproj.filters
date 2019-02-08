@@ -120,6 +120,15 @@
     <ClInclude Include="GimbalManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MPUState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MPUParser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GimbalState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
