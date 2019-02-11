@@ -377,7 +377,7 @@ DirectionAngle Rotation::GetDirectionAngle() {
 	//rotate forward vector by direction vector rotation
 	Vector3D rightXZCompensated = rotationChange.UnrotateVector(rotatedRight);//should only be two points on circle, compare against right
 
-																			  //define angles that define the forward vector, and the rotated then compensated forward vector
+	//define angles that define the forward vector, and the rotated then compensated forward vector
 	double rightAngle = Mathematics::RadiansToDegrees(atan2(right.Z, right.X));//forward as zero
 	double rightRotatedAngle = Mathematics::RadiansToDegrees(atan2(rightXZCompensated.Z, rightXZCompensated.X));//forward as zero
 

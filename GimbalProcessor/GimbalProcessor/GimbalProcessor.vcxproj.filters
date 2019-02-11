@@ -230,5 +230,8 @@
     <ClCompile Include="YawPitchRoll.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GimbalManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

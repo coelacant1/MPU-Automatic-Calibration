@@ -201,6 +201,7 @@
     <ClCompile Include="ExtendedStateObserver.cpp" />
     <ClCompile Include="FastFourierTransform.cpp" />
     <ClCompile Include="FiniteImpulseResponse.cpp" />
+    <ClCompile Include="GimbalManager.cpp" />
     <ClCompile Include="GimbalProcessor.cpp" />
     <ClCompile Include="HighPassFilter.cpp" />
     <ClCompile Include="KalmanFilter.cpp" />
