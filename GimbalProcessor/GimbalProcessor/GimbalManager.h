@@ -12,21 +12,27 @@
 
 class GimbalManager {
 private:
+	Quaternion InterpolateRotation(double ratio);//same for all MPUs
+	Vector3D InterpolatePosition(double ratio);
+	double LinearInterpolateDouble(double ratio, double inMin, double inMax, double outMin, double outMax);
+	Vector3D LinearInterpolateVector(double ratio, Vector3D start, Vector3D end);
+
+	double CubicInterpolateDouble(double ratio, double inMin, double inMax, double outMin, double outMax);
+	Vector3D CubicInterpolateVector(double ratio, Vector3D start, Vector3D end);
+
 	Vector3D startRotation;
 	Vector3D endRotation;
 	EulerOrder eulerOrder;
 	Vector3D startPosition;
 	Vector3D endPosition;
-	Quaternion InterpolateRotation(double ratio);//same for all MPUs
-	Vector3D InterpolatePosition(double ratio);
-	double InterpolateDouble(double ratio, double inMin, double inMax, double outMin, double outMax);
-	Vector3D InterpolateVector(double ratio, Vector3D start, Vector3D end);
+	long constantVelocityTime;
+	bool cubic;
 
 public:
-	GimbalManager();
+	GimbalManager(bool cubic);
 
-	Vector3D GetMPUAcceleration(Vector3D mpuPositionOffset, double ratio);
-	Vector3D GetMPUAngularVelocity(double ratio);
+	Vector3D GetMPUAcceleration(Vector3D mpuPositionOffset, double ratio, double period);
+	Vector3D GetMPUAngularVelocity(double ratio, double period);
 
 	void SetStartEndRotation(Vector3D startRotation, Vector3D endRotation, EulerOrder eulerOrder);
 	void SetStartEndPosition(Vector3D startPosition, Vector3D endPosition);
