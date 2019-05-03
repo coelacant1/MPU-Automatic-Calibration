@@ -3,7 +3,10 @@
 
 const int SERVOPIN = 9;
 
-#define ENABLE 2
+#define BASEENABLE 2
+#define PITCHENABLE 2
+#define ROLLENABLE 2
+#define ACTUENABLE 2
 #define BASESTP 3
 #define BASEDIR 4
 #define PITCHSTP 5
@@ -14,12 +17,12 @@ const int SERVOPIN = 9;
 
 Servo roll;
 
-float basePosition = 800.0f;
-float pitchPosition = 800.0f;
-float rollPosition = 800.0f;
+float basePosition = 0.0f;
+float pitchPosition = 0.0f;
+float rollPosition = 0.0f;
 float actuPosition = 500.0f * 80.0f;
 
-const long calculationAccuracy = 1;
+const long calculationAccuracy = 10;
 const int stepTime = 2;//microseconds
 const int minimumStepTime = 1;//microseconds
 const int targetVelocity = 300;//mm/s
