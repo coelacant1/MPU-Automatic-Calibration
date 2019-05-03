@@ -1,21 +1,23 @@
-#pragma once
-
 class OutputFastPin{
   private:
     uint8_t pinBit;
     
   public:
-    OutputFastPinA(uint8_t pinBit){
+    OutputFastPin(){
+      
+    }
+    
+    OutputFastPin(uint8_t pinBit){
       this->pinBit = pinBit;
       pinMode(pinBit, OUTPUT);
     }
     
     void High(){
-      digitalWriteFast(pinBit, HIGH)
+      digitalWriteFast(pinBit, HIGH);
     }
     
     void Low(){
-      digitalWriteFast(pinBit, LOW)
+      digitalWriteFast(pinBit, LOW);
     }
 
 };

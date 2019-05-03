@@ -18,7 +18,7 @@ class Axis{
     const int STEPTIME = 3;//microseconds
     
   public:
-    Axis(uint_8 ENA, uint_8 STP, uint_8 DIR, uint_8 END, float homingSpeed, float homeOffset, float stepsPerIncrement){
+    Axis(uint8_t ENA, uint8_t STP, uint8_t DIR, uint8_t END, float homingSpeed, float homeOffset, float stepsPerIncrement){
       this->ENA = OpenCollectorFastPin(ENA);
       this->STP = OpenCollectorFastPin(STP);
       this->DIR = OpenCollectorFastPin(DIR);
@@ -28,9 +28,9 @@ class Axis{
       this->homeOffset = homeOffset;
       this->stepsPerIncrement = stepsPerIncrement;
 
-      ENA.High();
-      STP.High();
-      DIR.High();
+      this->ENA.High();
+      this->STP.High();
+      this->DIR.High();
     }
 
     void Enable(){ ENA.High(); }
@@ -76,7 +76,7 @@ class Axis{
       //move back 10mm
       Backward();
       for(long i = 0; i < StepsPerDistance(10); i++){
-        StepAxis(axis);
+        Step();
         delayMicroseconds(MicroDelay(homingSpeed));
       }
       
@@ -101,7 +101,7 @@ class Axis{
     void ZeroStepPosition(){ stepPosition = 0; }
     long GetStepPosition(){return stepPosition; }
     float GetHomingSpeed(){ return homingSpeed; }
-    float GetHomeOffset(){ return homeOffsetingSpeed; }
+    float GetHomeOffset(){ return homeOffset; }
     float GetStepsPerIncrement(){ return stepsPerIncrement; }
     bool ReadEndstop(){ return END.Read(); }
 

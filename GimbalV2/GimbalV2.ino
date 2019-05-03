@@ -1,6 +1,4 @@
-#include "OpenCollectorFastPin.h"
-#include "OutputFastPin.h"
-#include "InputFastPin.h"
+#include "Axis.h"
 
 const bool DEBUG = false;
 const int MICROSTEP = 64;
@@ -14,12 +12,24 @@ Axis rol = Axis(7,  11, 9,  4, 5.0f, 20.0f, 1.0f / (0.45f / MICROSTEP));
 Axis pit = Axis(28, 32, 30, 5, 5.0f, 20.0f, 1.0f / (0.45f / MICROSTEP));
 Axis yaw = Axis(27, 31, 29, 6, 5.0f, 20.0f, 1.0f / (0.9f  / MICROSTEP));
 
-OutputFastPin CONTROL = OutputFastPinBuilder::BuildPin(2, GPIOOUTPUT);
+OutputFastPin CONTROL = OutputFastPin(2);
+
+void homingSequence(){
+  act.HomeAxis();
+  rol.HomeAxis();
+  pit.HomeAxis();
+  yaw.HomeAxis();
+}
 
 void setup() {
   CONTROL.Low();
   
-  homingSequence();
+  //homingSequence();
+
+  act.Enable();
+  delay(1000);
+  act.Disable();
+  delay(1000);
 }
 
 void loop() {
@@ -43,10 +53,10 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   float pitOffsetDistance = pit.GetIncrementPosition() - pitPos;
   float yawOffsetDistance = yaw.GetIncrementPosition() - yawPos;
 
-  if(actOffsetDistance < 0) { act.Backward(); actOffsetDistance = abs(actOffsetDistance); else act.Forward();
-  if(rolOffsetDistance < 0) { rol.Backward(); rolOffsetDistance = abs(rolOffsetDistance); else rol.Forward();
-  if(pitOffsetDistance < 0) { pit.Backward(); pitOffsetDistance = abs(pitOffsetDistance); else pit.Forward();
-  if(yawOffsetDistance < 0) { yaw.Backward(); yawOffsetDistance = abs(yawOffsetDistance); else yaw.Forward();
+  if(actOffsetDistance < 0) { act.Backward(); actOffsetDistance = abs(actOffsetDistance); } else act.Forward();
+  if(rolOffsetDistance < 0) { rol.Backward(); rolOffsetDistance = abs(rolOffsetDistance); } else rol.Forward();
+  if(pitOffsetDistance < 0) { pit.Backward(); pitOffsetDistance = abs(pitOffsetDistance); } else pit.Forward();
+  if(yawOffsetDistance < 0) { yaw.Backward(); yawOffsetDistance = abs(yawOffsetDistance); } else yaw.Forward();
   
   long actSteps = act.StepsPerDistance(actOffsetDistance);
   long rolSteps = rol.StepsPerDistance(rolOffsetDistance);
@@ -62,8 +72,6 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   if(rolSteps < 1) { rolIncrements = maxSteps * ACCURACY; } else { rolIncrements = ((float)maxSteps / (float)rolSteps) * ACCURACY; }
   if(pitSteps < 1) { pitIncrements = maxSteps * ACCURACY; } else { pitIncrements = ((float)maxSteps / (float)pitSteps) * ACCURACY; }
   if(yawSteps < 1) { yawIncrements = maxSteps * ACCURACY; } else { yawIncrements = ((float)maxSteps / (float)yawSteps) * ACCURACY; }
-
-  long maxIncrements = max(actIncrements, max(rolIncrements, max(pitIncrements, yawIncrements)));
 
   long actI = actIncrements;
   long rolI = rolIncrements;
@@ -85,7 +93,7 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   int maxVelocityPeriod = act.MicroDelay(velocity);
 
   unsigned int microsecondDelay = minVelocityPeriod;
-  long maxStepIncrements = maxSteps * calculationAccuracy;
+  long maxStepIncrements = maxSteps * ACCURACY;
   long rampUp = maxStepIncrements * RAMPPERCENTAGE;
   long rampDown = maxStepIncrements * (1.0f - RAMPPERCENTAGE);
   
@@ -139,11 +147,4 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   if(rolStepped) rol.StepOff();
   if(pitStepped) pit.StepOff();
   if(yawStepped) yaw.StepOff();
-}
-
-void homingSequence(){
-  act.HomeAxis();
-  rol.HomeAxis();
-  pit.HomeAxis();
-  yaw.HomeAxis();
 }
