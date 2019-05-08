@@ -13,12 +13,13 @@ class Axis{
     float homingSpeed;
     float homeOffset;
     float stepsPerIncrement;
+    char axisName;
     
     long stepPosition = 0;
     const int STEPTIME = 3;//microseconds
     
   public:
-    Axis(uint8_t ENA, uint8_t STP, uint8_t DIR, uint8_t END, float homingSpeed, float homeOffset, float stepsPerIncrement){
+    Axis(uint8_t ENA, uint8_t STP, uint8_t DIR, uint8_t END, float homingSpeed, float homeOffset, float stepsPerIncrement, char axisName){
       this->ENA = OpenCollectorFastPin(ENA);
       this->STP = OpenCollectorFastPin(STP);
       this->DIR = OpenCollectorFastPin(DIR);
@@ -27,15 +28,20 @@ class Axis{
       this->homingSpeed = homingSpeed;
       this->homeOffset = homeOffset;
       this->stepsPerIncrement = stepsPerIncrement;
+      this->axisName = axisName;
 
-      this->ENA.High();
-      this->STP.High();
-      this->DIR.High();
+      this->ENA.Low();
+      this->STP.Low();
+      this->DIR.Low();
     }
 
-    void Enable(){ ENA.High(); }
-    void Disable(){ ENA.Low(); }
-    void StepOn(){ STP.High(); }
+    void Enable(){ ENA.Low(); }
+    void Disable(){ ENA.High(); }
+    void StepOn(){ 
+      STP.High(); 
+      Serial.print(axisName);
+      Serial.println(": Step on");
+    }
 
     void StepOff(){
       STP.Low();
@@ -60,7 +66,7 @@ class Axis{
 
     int MicroDelay(float velocity){
       //1 / (micros * steps/mm  * mm/s)
-      return 1 / (1000000.0f * stepsPerIncrement * velocity);
+      return 1000000.0f / (stepsPerIncrement * velocity);
     }
     
     void HomeAxis(){
@@ -68,7 +74,7 @@ class Axis{
       Enable();
       Forward();
       
-      while(!ReadEndstop()){
+      while(ReadEndstop()){
         Step();
         delayMicroseconds(MicroDelay(homingSpeed));
       }
@@ -82,7 +88,7 @@ class Axis{
       
       //rehome at 10% speed
       Forward();
-      while(!ReadEndstop()){
+      while(ReadEndstop()){
         Step();
         delayMicroseconds(MicroDelay(homingSpeed / 10.0f));
       }

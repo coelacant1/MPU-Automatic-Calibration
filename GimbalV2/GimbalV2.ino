@@ -7,10 +7,10 @@ const int ACCURACY = 10;
 const int MINIMUMVELOCITY = 1;
 const float RAMPPERCENTAGE = 0.1f;
 
-Axis act = Axis(8,  12, 10, 3, 5.0f, 10.0f, 5.0f * MICROSTEP);
-Axis rol = Axis(7,  11, 9,  4, 5.0f, 20.0f, 1.0f / (0.45f / MICROSTEP));
-Axis pit = Axis(28, 32, 30, 5, 5.0f, 20.0f, 1.0f / (0.45f / MICROSTEP));
-Axis yaw = Axis(27, 31, 29, 6, 5.0f, 20.0f, 1.0f / (0.9f  / MICROSTEP));
+Axis act = Axis(8,  12, 10, 3, 45.0f, -5.0f, 5.0f * MICROSTEP, 'A');
+Axis rol = Axis(7,  11, 9,  4, 45.0f, 95.0f, 1.0f / (0.45f / MICROSTEP), 'R');
+Axis pit = Axis(28, 32, 30, 5, 45.0f, 14.5f, 1.0f / (0.45f / MICROSTEP), 'P');
+Axis yaw = Axis(27, 31, 29, 6, 45.0f, -80.0f, 1.0f / (0.9f  / MICROSTEP), 'Y');
 
 OutputFastPin CONTROL = OutputFastPin(2);
 
@@ -26,18 +26,56 @@ void setup() {
   
   //homingSequence();
 
-  act.Enable();
-  delay(1000);
-  act.Disable();
-  delay(1000);
+  Serial.begin(115200);
+  
 }
 
 void loop() {
-  concurrentTransition(800, 360, 360, 360, 10);
+  /*
+  Serial.println("Axis Enable");
+  act.Enable();
+  delay(2000);
+  Serial.println("Axis Disable");
+  act.Disable();
+  delay(2000);
 
-  delay(5000);
+  Serial.println("Roll Enable");
+  rol.Enable();
+  delay(2000);
+  Serial.println("Roll Disable");
+  rol.Disable();
+  delay(2000);
+  
+  Serial.println("Pitch Enable");
+  pit.Enable();
+  delay(2000);
+  Serial.println("Pitch Disable");
+  pit.Disable();
+  delay(2000);
+  
+  Serial.println("Yaw Enable");
+  yaw.Enable();
+  delay(2000);
+  Serial.println("Yaw Disable");
+  yaw.Disable();
+  delay(2000);
+  */
+
+  act.Enable();
+  rol.Enable();
+  pit.Enable();
+  yaw.Enable();
+
+  //concurrentTransition(800, 360, 360, 360, 10);
+
+  //delay(5000);
 
   homingSequence();
+
+  act.Disable();
+  rol.Disable();
+  pit.Disable();
+  yaw.Disable();
 
   delay(10000);
 }
@@ -97,7 +135,7 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   long rampUp = maxStepIncrements * RAMPPERCENTAGE;
   long rampDown = maxStepIncrements * (1.0f - RAMPPERCENTAGE);
   
-  cli();
+  //cli();
 
   for (long i = 0; i < maxStepIncrements; i++){
     //ACTUATOR
