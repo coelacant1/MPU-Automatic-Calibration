@@ -1,16 +1,16 @@
 #include "Axis.h"
 
 const bool DEBUG = false;
-const int MICROSTEP = 64;
+const float MICROSTEP = 64.0f;
 const int STEPTIME = 3;//microseconds
 const int ACCURACY = 10;
 const int MINIMUMVELOCITY = 1;
 const float RAMPPERCENTAGE = 0.1f;
 
 Axis act = Axis(8,  12, 10, 3, 45.0f, -5.0f, 5.0f * MICROSTEP, 'A');
-Axis rol = Axis(7,  11, 9,  4, 45.0f, 95.0f, 1.0f / (0.45f / MICROSTEP), 'R');
-Axis pit = Axis(28, 32, 30, 5, 45.0f, 14.5f, 1.0f / (0.45f / MICROSTEP), 'P');
-Axis yaw = Axis(27, 31, 29, 6, 45.0f, -80.0f, 1.0f / (0.9f  / MICROSTEP), 'Y');
+Axis rol = Axis(7,  11, 9,  4, 30.0f, 85.0f,  (200.0f * MICROSTEP * (90.0f / 20.0f)) / 360.0f, 'R');
+Axis pit = Axis(28, 32, 30, 5, 30.0f, 13.5f,  (200.0f * MICROSTEP * (90.0f / 20.0f)) / 360.0f, 'P');
+Axis yaw = Axis(27, 31, 29, 6, 45.0f, -82.5f, (200.0f * MICROSTEP * (39.0f / 20.0f)) / 360.0f, 'Y');
 
 OutputFastPin CONTROL = OutputFastPin(2);
 
@@ -21,63 +21,53 @@ void homingSequence(){
   yaw.HomeAxis();
 }
 
+void TestAxes(){
+  Serial.println("Testing Axes..");
+  for(int i = 0; i < 4; i++){
+    act.RampMoveAxis(-100, 100);
+    rol.RampMoveAxis(90, 100);
+    
+    for(int j = 0; j < 4; j++){
+      pit.RampMoveAxis(90, 100);
+
+      for(int k = 0; k < 4; k++){
+        yaw.RampMoveAxis(90, 100);
+        
+        delay(50);
+      }
+    }
+  }
+  
+  act.RampMoveAxis(400, 100);
+
+  delay(1000);
+}
+
 void setup() {
   CONTROL.Low();
-  
-  //homingSequence();
 
   Serial.begin(115200);
+
+  Serial.println("Enabling stepper drivers...");
   
+  act.Enable();
+  rol.Enable();
+  pit.Enable();
+  yaw.Enable();
+
+  delay(100);
+
+  Serial.println("Homing gimbal...");
+  homingSequence();
+
+  delay(200);
 }
 
 void loop() {
-  /*
-  Serial.println("Axis Enable");
-  act.Enable();
-  delay(2000);
-  Serial.println("Axis Disable");
-  act.Disable();
-  delay(2000);
+  TestAxes();
+  //homingSequence();
 
-  Serial.println("Roll Enable");
-  rol.Enable();
-  delay(2000);
-  Serial.println("Roll Disable");
-  rol.Disable();
-  delay(2000);
-  
-  Serial.println("Pitch Enable");
-  pit.Enable();
-  delay(2000);
-  Serial.println("Pitch Disable");
-  pit.Disable();
-  delay(2000);
-  
-  Serial.println("Yaw Enable");
-  yaw.Enable();
-  delay(2000);
-  Serial.println("Yaw Disable");
-  yaw.Disable();
-  delay(2000);
-  */
-
-  act.Enable();
-  rol.Enable();
-  pit.Enable();
-  yaw.Enable();
-
-  //concurrentTransition(800, 360, 360, 360, 10);
-
-  //delay(5000);
-
-  homingSequence();
-
-  act.Disable();
-  rol.Disable();
-  pit.Disable();
-  yaw.Disable();
-
-  delay(10000);
+  delay(1000);
 }
 
 long mapFast(long x, long in_min, long in_max, long out_min, long out_max)
@@ -185,4 +175,46 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   if(rolStepped) rol.StepOff();
   if(pitStepped) pit.StepOff();
   if(yawStepped) yaw.StepOff();
+}
+
+void TestDriverEnables(){
+  Serial.println("Axis Enable");
+  act.Enable();
+  delay(2000);
+  Serial.println("Axis Disable");
+  act.Disable();
+  delay(2000);
+
+  Serial.println("Roll Enable");
+  rol.Enable();
+  delay(2000);
+  Serial.println("Roll Disable");
+  rol.Disable();
+  delay(2000);
+  
+  Serial.println("Pitch Enable");
+  pit.Enable();
+  delay(2000);
+  Serial.println("Pitch Disable");
+  pit.Disable();
+  delay(2000);
+  
+  Serial.println("Yaw Enable");
+  yaw.Enable();
+  delay(2000);
+  Serial.println("Yaw Disable");
+  yaw.Disable();
+  delay(2000);
+}
+
+void TestLinearAxis(){
+  Serial.println("Moving Axis 10mm");
+  act.RampMoveAxis(-500, 200);
+
+  delay(1000);
+  
+  Serial.println("Moving Axis -10mm");
+  act.RampMoveAxis(500, 200);
+
+  delay(1000);
 }
