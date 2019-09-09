@@ -1,3 +1,11 @@
+/*
+ * SLIP RINGS SUPPORT 250RPM
+ * DPS -> RPM : DPS / 6 = RPM
+ * 250RPM = 6 * 250 DPS = 1500 DPS
+ * 
+ * 8W -> >500,000,000 rotations
+ * 12W -> >20,000,000 rotations
+ */
 #include "Axis.h"
 
 const bool DEBUG = false;
@@ -11,6 +19,8 @@ Axis act = Axis(8,  12, 10, 3, 45.0f, -5.0f, 5.0f * MICROSTEP, 'A');
 Axis rol = Axis(7,  11, 9,  4, 30.0f, 85.0f,  (200.0f * MICROSTEP * (90.0f / 20.0f)) / 360.0f, 'R');
 Axis pit = Axis(28, 32, 30, 5, 30.0f, 13.5f,  (200.0f * MICROSTEP * (90.0f / 20.0f)) / 360.0f, 'P');
 Axis yaw = Axis(27, 31, 29, 6, 45.0f, -82.5f, (200.0f * MICROSTEP * (39.0f / 20.0f)) / 360.0f, 'Y');
+
+float stepsPerIncrement = (200.0f * MICROSTEP * (39.0f / 20.0f)) / 360.0f;
 
 OutputFastPin CONTROL = OutputFastPin(2);
 
@@ -59,13 +69,19 @@ void setup() {
 
   Serial.println("Homing gimbal...");
   homingSequence();
+  //rol.HomeAxis();
 
+  delay(200);
+  act.RampMoveAxis(-250, 100);
   delay(200);
 }
 
 void loop() {
-  TestAxes();
+  //TestAxes();
   //homingSequence();
+
+  //rol.RampMoveAxis(1440, 2500);
+  RampAllAxes(720, 3000);
 
   delay(1000);
 }
@@ -125,7 +141,8 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   long rampUp = maxStepIncrements * RAMPPERCENTAGE;
   long rampDown = maxStepIncrements * (1.0f - RAMPPERCENTAGE);
   
-  //cli();
+  cli();
+  CONTROL.High();
 
   for (long i = 0; i < maxStepIncrements; i++){
     //ACTUATOR
@@ -175,6 +192,10 @@ void concurrentTransition(float actPos, float rolPos, float pitPos, float yawPos
   if(rolStepped) rol.StepOff();
   if(pitStepped) pit.StepOff();
   if(yawStepped) yaw.StepOff();
+
+  sei();
+
+  CONTROL.Low();
 }
 
 void TestDriverEnables(){
@@ -217,4 +238,65 @@ void TestLinearAxis(){
   act.RampMoveAxis(500, 200);
 
   delay(1000);
+}
+
+int MicroDelay(float velocity) {
+  //1 / (micros * steps/mm  * mm/s)
+  return 1000000.0f / (stepsPerIncrement * velocity);
+}
+
+long StepsPerDistance(float distance) {
+  //mm * steps/mm = steps
+  return distance * stepsPerIncrement;
+}
+
+void RampAllAxes(float distance, float velocity){
+    long steps = StepsPerDistance(distance);
+    bool dForward = steps > 1;
+    steps = abs(steps);
+
+    if (dForward){
+      rol.Forward();
+      pit.Forward();
+      yaw.Forward();
+    }
+    else{
+      rol.Backward();
+      pit.Backward();
+      yaw.Backward();
+    }
+    
+    float rampRatio = 0.1f;
+    float minVel = 1.0f;
+    int stepTime = 3;//microseconds
+
+    long rampUp = steps * rampRatio;
+    long rampDown = steps * (1.0f - rampRatio);
+    unsigned int velocityInterp = minVel;
+
+    for (long i = 0; i < steps; i++) {
+      rol.StepOn();
+      pit.StepOn();
+      yaw.StepOn();
+
+      delayMicroseconds(stepTime);
+      
+      rol.StepOff();
+      pit.StepOff();
+      yaw.StepOff();
+
+      if (i < rampUp) {
+        velocityInterp = mapFast(i, 0, rampUp, minVel, velocity);
+      }
+      else if (i > rampDown) {
+        velocityInterp = mapFast(i, rampDown, steps, velocity, minVel);
+      }
+      else {
+        velocityInterp = velocity;
+      }
+
+      if (velocityInterp < 0) velocityInterp = 0;
+
+      delayMicroseconds(MicroDelay(velocityInterp));
+    }
 }
